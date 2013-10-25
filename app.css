@@ -3,6 +3,13 @@
 
 body { background: #000; }
 
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+    outline: none;
+}
+
 #wrapper {
   font-family: Helvetica;
   width: 320px;
@@ -11,12 +18,11 @@ body { background: #000; }
   position: relative;
 }
 
-#declaration {
-  background: #ff1133;
+section {
   padding: 40px 20px;
 }
 
-#declaration p {
+section p {
   color: #fff;
   font-size: 38px;
   line-height: 50px;
@@ -56,6 +62,7 @@ button:hover {
 }
 
 section {
+  background: #ff1133;
   position: absolute;
   top: 0;
   left: 0;
@@ -73,8 +80,9 @@ nav {
 
 nav button {
   border: none;
-  width: 32%;
+  width: 27%;
   height: 100%;
+  margin: 0 2% 0 3%;
 }
 
 nav button.active {

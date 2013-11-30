@@ -26,7 +26,19 @@ section p {
   color: #fff;
   font-size: 38px;
   line-height: 50px;
-  padding-bottom: 40px;
+}
+
+section p.summary {
+  padding-bottom: 20px;
+}
+
+.current-stuff {
+  overflow: auto;
+  padding: 10px 0
+}
+
+section strong {
+  float: right;
 }
 
 select {

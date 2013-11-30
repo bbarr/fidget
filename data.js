@@ -1,6 +1,6 @@
 var data = this.data = {
 
-  intervals: ,
+  intervals: [ 15, 30, 45, 60 ],
 
   actions: [
     { name: 'pushups' },

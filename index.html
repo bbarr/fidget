@@ -8,16 +8,29 @@
 
   <div id="wrapper">
 
-    <section id="dashboard">
-      dashboard
+    <section rv-show=":section | eq dashboard" id="dashboard">
+      <p class='summary'>
+        I want to do something
+          <select class='list' rv-value=":selectedList">
+            <option rv-each-list=":lists" rv-text="list.name"></option>
+          </select>
+          every
+          <select class='interval' rv-value=":selectedInterval">
+            <option rv-each-interval=":intervals" rv-text="interval"></option>
+          </select>
+          minutes.
+        </p>
+        <div class="current-stuff">
+          <p><strong rv-text="timer:current | asTime"></strong></p>
+          <button rv-on-click=".playOrPause" rv-text=":paused | ternary start stop"></button>
+        </div>
+        <p rv-text=":prompt"></p>
     </section>
 
-    <section id="settings">
-      settings
+    <section rv-show=":section | eq settings" id="settings">
     </section>
 
-    <section id="lists">
-      lists
+    <section rv-show=":section | eq lists" id="lists">
     </section>
 
     <nav>
@@ -30,9 +43,10 @@
 
   <script src="vendor/store.js"></script>
   <script src="vendor/lodash.js"></script>
+  <script src="vendor/rivets.js"></script>
   <script src="vendor/jquery.js"></script>
   <script src="vendor/backbone.js"></script>
-
+  <script src="vendor/moment.js"></script>
   <script src="app.js"></script>
 
   <script src="phonegap.js"></script>

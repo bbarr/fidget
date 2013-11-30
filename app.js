@@ -1,132 +1,53 @@
-
 (function() {
 
-  function setByName(name) { return _.find(setTemplates, { name: name }) }
-  function actionByName(name) { return _.find(actions, { name: name }) }
+  function pad(number, width) {
+    width -= number.toString().length;
+    if (width > 0) {
+      return new Array(width + (/\./.test(number) ? 2 : 1)).join( '0' ) + number;
+    }
+    return number + "";
+  }
 
-  var models = {}
-  var collections = {}
-  var views = {}
+  rivets.formatters.eq = function(a, b) {
+    return a == b
+  }
 
-  var state = new Backbone.Model
+  rivets.formatters.ternary = function(val, a, b) {
+    return val ? a : b
+  }
 
-  views.Nav = Backbone.View.extend({
+  rivets.formatters.asTime = function(time) {
+    var duration = moment.duration(time)
+    return pad(duration.minutes(), 2) + ':' + pad(duration.seconds(), 2)
+  }
 
-    el: 'nav',
-
-    events: {
-      'click button': 'showSection'
-    },
-
-    showSection: function(e) {
+  rivets.formatters.preventDefault = function(fn) {
+    return function(e) {
       e.preventDefault()
-      var sectionName = e.currentTarget.getAttribute('rel')
-      state.set('section', sectionName)
-    },
+      fn.apply(this, arguments)
+    }
+  }
 
-    highlight: function(state) {
-      this.$buttons.removeClass(this.activeClass)
-      this.$el.find('[rel=' + state.get('section') + ']').addClass(this.activeClass)
-    },
-    
-    initialize: function() {
-      this.activeClass = 'active'
-      this.$buttons = this.$el.find('button')
-      state.on('change:section', this.highlight, this)
+  rivets.configure({
+    handler: function(target, event, binding) {
+      this.call(binding.model, event, target)
     }
   })
 
-  views.Dashboard = Backbone.View.extend({
-
-    el: '#dashboard',
-
-    events: {
-      'change select.list': 'setList',
-      'change select.interval': 'setInterval',
-      'click button': 'togglePaused'
+  rivets.adapters[':'] = {
+    subscribe: function(obj, keypath, callback) {
+      obj.on('change:' + keypath, callback)
     },
-
-    togglePaused: function(e) {
-      e.preventDefault()
-      state.set('paused', !state.get('paused'))
+    unsubscribe: function(obj, keypath, callback) {
+      obj.off('change:' + keypath, callback)
     },
-
-    setList: function(e) {
-      state.set('list', e.currentTarget.value)
+    read: function(obj, keypath) {
+      return obj.get(keypath)
     },
-
-    setInterval: function(e) {
-      state.set('interval', e.currentTarget.value)
-    },
-
-    initialize: function() {
-      state.on('change:section', this.showOrHide, this)
-      state.on('change:paused', this.updateButtonText, this)
-      this.render(state.get('lists'), state.get('intervals'))
-      this.$button = this.$el.find('button')
-    },
-
-    updateButtonText: function() {
-      if (state.get('paused')) {
-        this.$button.text('resume')
-      } else {
-        this.$button.text('pause')
-      }
-    },
-
-    render: function(lists, intervals) {
-      var html = [
-        "<p>I want to do something ",
-          "<select class='list'>",
-            lists.map(function(list) { return "<option>" + list.name + "</option>" }),
-          "</select>",
-          " every ",
-          "<select class='interval'>",
-            intervals.map(function(i) { return "<option>" + i + "</option>" }),
-          "</select>",
-          " minutes.",
-        "</p>",
-        "<button>pause</button>"
-      ].join('')
-      this.$el.html(html)
-    },
-
-    showOrHide: function(state) {
-      if (state.get('section') == 'dashboard') {
-        this.$el.show()
-      } else {
-        this.$el.hide()
-      }
+    publish: function(obj, keypath, value) {
+      obj.set(keypath, value)
     }
-  })
-
-  views.Settings = Backbone.View.extend({
-    el: '#settings',
-    initialize: function() {
-      state.on('change:section', this.showOrHide, this)
-    },
-    showOrHide: function(state) {
-      if (state.get('section') == 'settings') {
-        this.$el.show()
-      } else {
-        this.$el.hide()
-      }
-    }
-  })
-
-  views.Lists = Backbone.View.extend({
-    el: '#lists',
-    initialize: function() {
-      state.on('change:section', this.showOrHide, this)
-    },
-    showOrHide: function(state) {
-      if (state.get('section') == 'lists') {
-        this.$el.show()
-      } else {
-        this.$el.hide()
-      }
-    }
-  })
+  }
 
   var lists = [
     {
@@ -155,31 +76,71 @@
     }
   ]
 
-  var actions = [
-    { name: 'pushups' },
-    { name: 'situps' },
-    { name: 'jumping jacks' },
-    { name: 'plank' }
-  ]
+  var intervals = [ 15, 30, 45, 60 ]
 
-  state.set('lists', lists.map(function(set) {
-    return _.extend(_.clone(set), {
-      actions: set.actions.map(function(action) {
-        return [ action[0], _.find(actions, { name: action[1] }) ] 
-      })
-    })
-  }))
+  var actions = {
+    pushups: {},
+    situps: {},
+    'jumping jacks': {},
+    plank: { timed: true }
+  }
 
-  state.set('intervals', [ 15, 30, 45, 60 ])
+  var app = new Backbone.Model;
+  app.playOrPause = function() { this.set('paused', !this.get('paused')) }
+  app.on('DING', function() {
+    var listName = this.get('selectedList')
+    var list = _.find(lists, { name: listName })
+    var rawAction = _.sample(list.actions)
+    var action = rawAction.concat([ actions[rawAction[1]] ])
+    var message = [
+      'Do ',
+      action[0],
+      action[2].timed ? ' seconds of ' : ' ',
+      action[1]
+    ].join('')
+    app.set('prompt', message)
+    app.reset()
+  })
+  app.reset = function() {
+    app.trigger('change:selectedInterval')
+    app.trigger('change:paused')
+  }
+  app.set('section', 'dashboard')
+  app.set('intervals', intervals)
+  app.set('lists', lists)
 
-  new views.Nav
-  new views.Dashboard
-  new views.Settings
-  new views.Lists
+  var timer = new Backbone.Model();
+  timer.step = function() {
 
-  window.state = state;
+    if (this.paused) {
+      clearTimeout(this.timeout)
+      return
+    }
 
-  state.set('section', 'dashboard')
+    var newCurrent = this.get('current') - 1000
+    if (newCurrent < 0) return app.trigger('DING')
 
-  state.on('change', function() { console.log(state.attributes); })
+    this.set('current', newCurrent)
+    this.timout = setTimeout(timer.step, 1000)
+
+  }.bind(timer)
+
+  app.on('change:paused', function() { 
+    timer.paused = this.get('paused') 
+    if (!timer.paused) timer.step();
+  })
+
+  app.on('change:selectedInterval', function() {
+    app.timer.set('current', parseInt(app.get('selectedInterval')) * 60 * 1000)
+  })
+
+  app.timer = timer
+
+  app.set('selectedInterval', intervals[0])
+  app.set('selectedList', lists[0].name)
+  app.set('paused', true)
+
+  rivets.bind($('#wrapper'), app)
+
+  window.app = app;
 })()
